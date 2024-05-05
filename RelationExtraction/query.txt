@@ -1,0 +1,31 @@
+LOAD CSV WITH HEADERS FROM 'file:///newscout.csv' AS row
+WITH row
+CALL {
+    WITH row
+    MERGE (a:Article {article_id: toInteger(row.article_id)})
+    ON CREATE SET a.title = row.title,
+    a.source_url = row.source_url,
+    a.view_count = toInteger(row.view_count),
+    a.full_text = row.full_text,
+    a.avg_rating = toFloat(row.avg_rating),
+    a.category = row.category,
+    a.hashtag = row.hashtag
+
+  RETURN a
+}
+FOREACH(ignoreMe IN CASE 
+    WHEN row.comment_text IS NOT NULL AND row.user_id IS NOT NULL AND apoc.meta.cypher.type(row.article_id) = 'INTEGER' THEN [1] 
+    ELSE [] 
+END |
+    MERGE (u:User {user_id: row.user_id})
+    MERGE (u)-[:COMMENTED]->(c:Comment)
+    MERGE (c)-[:COMMENT_ON]->(a)
+    SET c.comment_text = row.comment_text
+)
+
+FOREACH(ignoreMe IN CASE
+    WHEN row.liked IS NOT NULL AND row.user_id IS NOT NULL AND apoc.meta.cypher.type(row.article_id) = 'INTEGER' THEN [1] 
+    ELSE [] 
+END |
+    MERGE (u)-[:LIKED]->(a)
+)
