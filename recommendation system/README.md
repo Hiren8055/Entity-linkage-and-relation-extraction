@@ -19,7 +19,7 @@ It takes the data from Neo4j and creates the embedding using GCN, we are perform
 
 
 Usage:
-python transR.py [parameters]
+`python transR.py [parameters]`
 
 Possible parameters includes:
 
@@ -61,4 +61,4 @@ Possible parameters includes:
 It takes the data from Neo4j through Neo4j and python, recommends article according to the user_id.
 
 Usage:
-python recommendation.py
+`python recommendation.py`
