@@ -14,18 +14,38 @@ import torch_geometric.transforms as T
 from torch_geometric.datasets import Planetoid
 from torch_geometric.nn import GCNConv
 from torch_geometric.utils import negative_sampling
+import pickle
+
+import sys
+
+sys.path.append("C:\Storage\Major project\Entity-linkage-and-relation-extraction\recommendation system\embeddings")
+# from model import *
+from model import TransRModel
+# import __main__
+# setattr(__main__, "TransRModel", TransRModel)
 
 # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# with open(r"C:\Storage\Major project\Entity-linkage-and-relation-extraction\recommendation system\embeddings\model\newscout_1\l1_0.001_l2_0.0005_es_0_L_1_eem_100_rem_100_nb_100_n_1000_m_1.0_f_1_mo_0.9_s_0_op_1_lo_0_TransR.ckpt", 'rb') as fr:
+# 		# model = 
+# 		# model.load_state_dict(torch.load('model\FB13\l_0.001_es_0_L_1_em_100_nb_100_n_1000_m_1.0_f_1_mo_0.9_s_0_op_1_lo_0_TransE.ckpt'))
+			
+# 			ent_embeddings_list = pickle.load(fr)
+# 			rel_embeddings_list = pickle.load(fr)
 
+# sent_model = torch.load(r"C:\Storage\Major project\Entity-linkage-and-relation-extraction\recommendation system\embeddings\model\newscout_1\l1_0.001_l2_0.0005_es_0_L_1_eem_100_rem_100_nb_100_n_1000_m_1.0_f_1_mo_0.9_s_0_op_1_lo_0_TransR.ckpt")
+# print(ent_embeddings_list)
+# print(sent_model)
 
 parser = argparse.ArgumentParser(description='recommendation system')
 parser.add_argument("id")
 parser.add_argument("training")
 
-driver = GraphDatabase.driver(uri="bolt://localhost:7687")
+driver = GraphDatabase.driver(uri="bolt://localhost:7687",auth =("neo4j","12345678"))
 session =driver.session()
 
 def feature_embedding(sent, sent_model):
+    # print("sent", sent)
+
     text = re.sub(r'\[[0-9]*\]',' ',sent)
     text = re.sub(r'\s+',' ',text)
     text = text.lower()
@@ -37,16 +57,50 @@ def feature_embedding(sent, sent_model):
     for i in range(len(sentence)):
         sentence[i] = [word for word in sentence[i] if word not in stopwords.words('english')]
     
-    # print(sentence)
+
+    # print("sentence",sentence)
+    # sentence = torch.FloatTensor(sentence[0],100)
+    # embedding = sent_model.ent_embeddings(sentence)
+    # print(embedding[0])
+    # print(len(sentence))
     if len(sentence) > 1: 
-        # print("more then 1")
+        # print(" 1")
+
+        # if len(sentence) >= 2:
+        #     print(" 2") 
+        temp = [] 
+        
+        for i in range(len(sentence)):
+            for j in range(len(sentence[i])):
+                print(sentence[i][j])
+                temp.append(sentence[i][j])
+        # print("temp",temp)
+        # embedding = sent_model.ent_embeddings(temp)
+        # print(embedding)
+        embedding = sent_model.encode(temp)
+        return embedding.tolist()
+        
+        # embedding = sent_model.encode(sentence)
+        # return embedding.tolist()
+
+    
+
+    elif len(sentence) == 1:
+        # print("equal 1")
+        # print(type(sentence))
+        if isinstance(sentence, list):
+            embedding = sent_model.encode(sentence[0])
+            return embedding.tolist()[0]
+
         embedding = sent_model.encode(sentence)
         return embedding.tolist()
 
-    if len(sentence) == 1:
-        # print("equal 1")
-        embedding = sent_model.encode(sentence[0])
-        return embedding.tolist()[0]
+
+    # elif type(sentence) == 'str':
+    #     print("more then 1")
+    #     embedding = sent_model.encode(sentence)
+    #     return embedding.tolist()
+
 
     else:
         # print("nothing")
@@ -66,7 +120,7 @@ def node_embedding():
         counter+=1
         # print(rec)
 
-
+        # try:
         if rec["n"].labels==frozenset({'Person'}):
             # print(node_arr)
             # print(rec["n"]["name"])
@@ -82,7 +136,8 @@ def node_embedding():
             # node_arr.append(rec["n"]["name"])
 
         elif rec["n"].labels==frozenset({'Article'}):
-            feat = feature_embedding(rec["n"]["abstract"],sent_model)
+            # print(rec)
+            feat = feature_embedding(rec["n"]["title"],sent_model)
             if len(feat) == 384:
                 node_arr.append([feat])
             else:
@@ -128,14 +183,28 @@ def node_embedding():
         elif rec["n"].labels==frozenset({'Geo'}):
             feat = feature_embedding(rec["n"]["name"],sent_model)
 
+
             # node_arr.append(rec["n"]["name"])
             # node_arr.append(["Geo",feature_embedding(rec["n"]["name"])])
             if len(feat) == 384:
                 node_arr.append([feat])
             else:
                 node_arr.append([feat[0]])
+
+        elif rec["n"].labels==frozenset({}):
+            feat = feature_embedding(rec["n"]["name"],sent_model)
+            
+            if len(feat) == 384:
+                node_arr.append([feat])
+            else:
+                node_arr.append([feat[0]])
+            
+
         else:
             print("problem")
+
+        # except:
+        #     print("type of node is not recognized")
     #print(node_arr)
     # print(counter)
     node_arr = np.array(node_arr)
@@ -259,11 +328,11 @@ class loadNet(torch.nn.Module):
     def encode(self, x, edge_index):
         # x = self.conv1(x, edge_index).relu()
         #print("save")
-        x = torch.load("conv1.pt")
+        x = torch.load("models/conv1.pt")
 
         #print("save")
         # x = self.conv2(x, edge_index)
-        x = torch.load( "conv2.pt")
+        x = torch.load("models/conv2.pt")
         return x
 
     def decode(self, z, edge_label_index):
@@ -362,9 +431,9 @@ def searching(args,final_edge_index):
                         print()
                         print()
                         print(counter,"Article  ")    
-                        print(rec["n"]["abstract"]) 
+                        print(rec["n"]["title"]) 
                         # print(rec) 
-                        print(rec["n"]["url"] )
+                        print(rec["n"]["source_url"] )
                         prev = str(new_arr_num[i])
     
     print() 
