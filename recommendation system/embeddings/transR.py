@@ -16,7 +16,6 @@ from evaluation import *
 # import loss
 import model
 
-from hyperboard import Agent
 
 USE_CUDA = torch.cuda.is_available()
 
