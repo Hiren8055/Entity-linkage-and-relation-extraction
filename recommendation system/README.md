@@ -2,7 +2,7 @@
 
 ## Introduction
 
-In graph we are performing link prediction for recommendatoin system, User -> Articles.
+We are performing link prediction for recommendatoin system.
 
 
 Code it divided into two main structures :
